@@ -1,0 +1,58 @@
+#!/bin/bash -l
+#SBATCH --job-name="ESM4"
+#SBATCH --account="s1201"
+#SBATCH --mail-type=NONE
+#SBATCH --mail-user=aaron.wienkers@unibe.ch
+#SBATCH --time=00:40:00
+#SBATCH --nodes=26
+#SBATCH --ntasks-per-core=1
+#SBATCH --ntasks-per-node=12
+#SBATCH --cpus-per-task=1
+#SBATCH --partition=normal
+#SBATCH --constraint=gpu
+#SBATCH --hint=nomultithread
+
+
+# Setup Environment
+module load daint-gpu
+module switch PrgEnv-cray PrgEnv-intel
+module unload cray-libsci
+module load cray-netcdf-hdf5parallel
+export LD_LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LD_LIBRARY_PATH
+
+# Setup Execution Variables
+workDir=/scratch/snx3000/awienker/ESM4_rundir/
+executable=${PWD}/../exec/esm4.1.x
+run_prog=srun
+
+# Specify Parallel Decomposition
+#export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+## Set up for run, these are the default values set in the input.nml file
+  # Total number of cores should be less than nodes * ntasks-per-node * cpus-per-task above
+  # Number of threads should match cpus-per-task
+# Number of cores to run the atmosphere
+atm_cores=192
+# Number of threads to use for the atmosphere
+atm_threads=1
+# Number of cores to run the ocean
+ocn_cores=120
+
+###########################################################
+##  ############# END USER INPUT SECTION ############### ##
+###########################################################
+## Set environment variables
+export KMP_STACKSIZE=512m
+export NC_BLKSZ=1M
+export F_UFMTENDIAN=big
+
+## Set the stacksize to unlimited
+ulimit unlimited
+ulimit -S -s unlimited
+ulimit -S -c unlimited
+
+## Go to the workDir
+cd ${workDir}
+
+## Execute the model in the workDir
+${run_prog} -n ${atm_cores} -c ${atm_threads} ${executable} : -n ${ocn_cores} -c 1 ${executable} |& tee stdout.log
+

@@ -35,7 +35,7 @@ OPENMP = y
 
 # The Intel Instruction Set Archetecture (ISA) compile options to use.
 # If blank, than use the default ISA settings for the host.
-ISA = -xHost
+ISA = 
 
 # Need to use at least GNU Make version 3.81
 need := 3.81
@@ -44,57 +44,54 @@ ifneq ($(need),$(ok))
 $(error Need at least make version $(need).  Load module gmake/3.81)
 endif
 
-MAKEFLAGS += --jobs=$(shell grep '^processor' /proc/cpuinfo | wc -l)
 
 # Macro for Fortran preprocessor
-FPPFLAGS =  -Wp,-w $(INCLUDES)
+FPPFLAGS :=  -Wp,-w $(INCLUDES)
+# Fortran Compiler flags for the NetCDF library
+FPPFLAGS += $(shell nf-config --fflags)
 
 # Base set of Fortran compiler flags
-FFLAGS := -fno-alias -stack-temps -safe-cray-ptr -ftz -assume byterecl -i4 -r8 -nowarn -g -qoverride-limits
+FFLAGS := -fno-alias -auto -stack-temps -safe-cray-ptr -ftz -assume byterecl -i4 -r8 -nowarn -g -qoverride-limits
 
 # Flags based on perforance target (production (OPT), reproduction (REPRO), or debug (DEBUG)
-FFLAGS_PROD = -fp-model source -O3
-FFLAGS_REPRO = -fp-model source -O2
+FFLAGS_PROD = -debug minimal -fp-model source -O3
+FFLAGS_REPRO = -debug minimal -fp-model source -O2
 FFLAGS_DEBUG = -O0 -check -check noarg_temp_created -check nopointer -warn -warn noerrors -debug variable_locations -fpe0 -ftrapuv
 
 # Flags to add additional build options
 FFLAGS_OPENMP = -fopenmp
-FFLAGS_VERBOSE = -v -V -what -warn all
-FFLAGS_COVERAGE = -prof-gen=srcpos
+FFLAGS_VERBOSE = -v -V -what -warn all -qopt-report-phase=vec -qopt-report=2
 
 
 # Macro for C preprocessor
 CPPFLAGS = -D__IFC $(INCLUDES)
+# C Compiler flags for the NetCDF library
+CPPFLAGS += $(shell nc-config --cflags)
 
 # Base set of C compiler flags
-CFLAGS := 
+CFLAGS = 
 
 # Flags based on perforance target (production (OPT), reproduction (REPRO), or debug (DEBUG)
-CFLAGS_PROD = -O3
+CFLAGS_PROD = -O2
 CFLAGS_REPRO = -O2
 CFLAGS_DEBUG = -O0 -g -ftrapuv
 
 # Flags to add additional build options
 CFLAGS_OPENMP = -fopenmp
-CFLAGS_VERBOSE = -w3
-
-# Optional Testing compile flags.  If FFLAGS_TEST or CFLAGS_TEST are not defined, then the PROD
-# compile settings will be used
-ifndef FFLAGS_TEST
-FFLAGS_TEST = $(FFLAGS_PROD)
-endif
-ifndef CFLAGS_TEST
-CFLAGS_TEST = $(CFLAGS_OPT)
-endif
+CFLAGS_VERBOSE = -w3 -qopt-report-phase=vec -qopt-report=2
 
 # Linking flags
 LDFLAGS :=
 LDFLAGS_OPENMP := -fopenmp
 LDFLAGS_VERBOSE := -Wl,-V,--verbose,-cref,-M
 
-LIBS = -mkl 
+LIBS := $(shell pkg-config --libs yaml-0.1)
+LIBS += -mkl 
 
-CPPDEFS = -Duse_netCDF -Duse_LARGEFILE
+CPPDEFS += -Duse_netCDF -Duse_LARGEFILE
+
+# Additional Preprocessor Macros needed due to  Autotools and CMake
+CPPDEFS += -DHAVE_SCHED_GETAFFINITY #-DHAVE_GETTID
 
 # Get compile flags based on target macros.
 ifeq ($(BLD_TYPE),REPRO)
@@ -105,10 +102,6 @@ else ifeq ($(BLD_TYPE),DEBUG)
 CFLAGS += $(CFLAGS_DEBUG)
 FFLAGS += $(FFLAGS_DEBUG)
 COBALT = -Wp,-w -fno-alias -auto -safe-cray-ptr -ftz -assume byterecl -i4 -r8 -nowarn -g -O0 -check -check noarg_temp_created -check nopointer -warn -warn noerrors -fpe0 -ftrapuv -msse2 $(FPPFLAGS)
-else ifeq ($(BLD_TYPE),TEST)
-CFLAGS += $(CFLAGS_TEST)
-FFLAGS += $(FFLAGS_TEST)
-COBALT = $(FFLAGS)
 else
 CFLAGS += $(CFLAGS_PROD)
 FFLAGS += $(FFLAGS_PROD)

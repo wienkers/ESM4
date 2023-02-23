@@ -72,7 +72,7 @@ CPPFLAGS += $(shell nc-config --cflags)
 CFLAGS = 
 
 # Flags based on perforance target (production (OPT), reproduction (REPRO), or debug (DEBUG)
-CFLAGS_PROD = -O2
+CFLAGS_PROD = -O3
 CFLAGS_REPRO = -O2
 CFLAGS_DEBUG = -O0 -g -ftrapuv
 

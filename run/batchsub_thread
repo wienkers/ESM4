@@ -1,0 +1,46 @@
+#!/bin/bash -l
+#SBATCH --job-name="ESM4"
+#SBATCH --account="s1201"
+#SBATCH --mail-type=NONE
+#SBATCH --mail-user=aaron.wienkers@unibe.ch
+#SBATCH --time=00:20:00
+#SBATCH --partition=normal
+#SBATCH --constraint=gpu
+#SBATCH --nodes=24
+
+## NOTES:
+# cpus-per-task == MPI Threads
+# ntasks == "atm_cores" (first) and "ocn_cores" (second)
+# ntasks-per-node * cpus-per-task == 12 (or however many cores are on each node for the partition)
+# nodes * ntasks-per-node == ntasks
+
+## Updated:
+# ntasks should equal atm_cores*atm_threads + ocn_cores
+# nodes and ntasks-per-node should ensure ntasks above
+
+
+## Setup Environment
+module load daint-gpu
+module load PrgEnv-intel
+module unload cray-libsci
+module load cray-netcdf-hdf5parallel
+export LD_LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LD_LIBRARY_PATH
+export KMP_STACKSIZE=512m
+export NC_BLKSZ=1M
+export F_UFMTENDIAN=big
+
+## Setup Execution Variables
+workDir=/scratch/snx3000/awienker/ESM4_rundir/
+executable=${PWD}/../exec/esm4.1.x
+run_prog=srun
+
+## Set the stacksize to unlimited
+ulimit unlimited
+ulimit -S -s unlimited
+ulimit -S -c unlimited
+
+## Execute the model in the workDir
+cd ${workDir}
+${run_prog} --nodes=16 --ntasks=96 --cpus-per-task=2  ${executable} : \
+            --nodes=8  --ntasks=96 --cpus-per-task=1  ${executable}   |& tee stdout.log
+

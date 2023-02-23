@@ -1,0 +1,19 @@
+
+# git clone git@github.com:NOAA-GFDL/FRE-NCtools.git
+
+export CC=cc
+export FC=ftn
+
+export CFLAGS=
+export FCFLAGS="-safe-cray-ptr"
+
+rm -r build
+mkdir build
+
+autoreconf -i
+
+cd build
+../configure --prefix=/users/awienker/ESM4/tools/ --with-mpi --with-netcdf --disable-ocean-model-grid-generator
+
+make
+make install
